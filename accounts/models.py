@@ -5,7 +5,7 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.contrib.auth.validators import UnicodeUsernameValidator
-
+from articles.models import Style
 
 class UserManager(BaseUserManager):
     def create_user(self, password, **fields):
@@ -18,7 +18,6 @@ class UserManager(BaseUserManager):
         fields.setdefault("is_admin", True)
         fields.setdefault("is_superuser", True)
         user = self.create_user(**fields)
-        user.is_admin = True
         user.save(using=self._db)
         return user
 
@@ -31,12 +30,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         "email",
         max_length=128,
         unique=True,
+        null=True,
     )
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
-    followers = models.ManyToManyField('self', symmetrical=False, related_name="followees", blank=True)
-    nickname=models.CharField("nickname", max_length=32, unique=True)
-    profile_image=models.ImageField(upload_to='profile_pics',blank=True)
+    followers = models.ManyToManyField('self', symmetrical=False, related_name="followees")
+    nickname = models.CharField("nickname", max_length=32, unique=True, null=True)
+    image = models.ImageField(upload_to='profile_pics',blank=True)
+    style = models.ManyToManyField(Style, related_name="style_users")
 
     objects = UserManager()
 
@@ -44,8 +45,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
 
-    def __str__(self):
-        return self.nickname
+    # def __str__(self):
+    #     return self.nickname
     
     @property
     def is_staff(self):
