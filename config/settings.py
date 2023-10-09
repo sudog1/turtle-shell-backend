@@ -1,13 +1,8 @@
-# import os
-# from dotenv import load_dotenv
+import os
+from dotenv import load_dotenv
 from datetime import timedelta
 from pathlib import Path
 
-# Load .env file
-# load_dotenv()
-
-# CLIENT_ID = os.getenv("CLIENT_ID")
-# CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,7 +12,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-i)fbqevof7nf^$tc^!6$m2jdb20807ktyx%80#^idu_-dt*$=g"
+# Load .env file
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -41,6 +38,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "accounts",
     "articles",
+    "products",
 ]
 
 REST_FRAMEWORK = {
@@ -143,6 +141,12 @@ STATIC_URL = "/static/"
 
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "/media/"
+
+# 무신사 API 세팅
+BRAND_UPDATE_PERIOD = 1
+PRODUCT_UPDATE_PERIOD = 1
+API_ENDPOINT = "https://www.musinsa.com/app/goods/"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
 # JWT 토큰 세팅
 SIMPLE_JWT = {

@@ -3,7 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from accounts.serializers import FollowListSerializer, UserCreateSerializer, UserInfoSerializer
+from accounts.serializers import (
+    FollowListSerializer,
+    UserCreateSerializer,
+    UserInfoSerializer,
+)
 from articles.models import Style, Article
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
@@ -63,18 +67,15 @@ class FollowView(APIView):
         )
         serializer = FollowListSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
-        
-    def post(self,request, user_id, format=None):
-        user = request.user # 현재 유저
+
+    def post(self, request, user_id, format=None):
+        user = request.user  # 현재 유저
         if not request.user.is_authticated:
-            return Response({"detail": "권한이 없습니다."},status=status.HTTP_403_FORBIDDEN)
-        target = get_object_or_404(get_user_model(), user_id) # 팔로우를 누른 대상
+            return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+        target = get_object_or_404(get_user_model(), user_id)  # 팔로우를 누른 대상
         if target in user.followers.all():
             user.followers.remove(target)
-            Response({"detail":"팔로우가 취소되었습니다"},status=status.HTTP_200_OK)
+            Response({"detail": "팔로우가 취소되었습니다"}, status=status.HTTP_200_OK)
         else:
             user.followers.add(target)
             Response({"detail": "팔로우하였습니다"}, status=status.HTTP_200_OK)
-
-
-               

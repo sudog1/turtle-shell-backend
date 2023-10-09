@@ -1,5 +1,6 @@
 from django.db import models
 from config.settings import AUTH_USER_MODEL
+from products.models import Product
 
 
 class Style(models.Model):
@@ -7,15 +8,6 @@ class Style(models.Model):
 
     def __str__(self):
         return str(self.name)
-
-
-class Product(models.Model):
-    id = models.IntegerField(primary_key=True)
-    name = models.CharField(max_length=255)
-    price = models.IntegerField()
-    image = models.CharField(max_length=255)
-    state = models.CharField(max_length=64)
-    quantity = models.IntegerField()
 
 
 class Article(models.Model):

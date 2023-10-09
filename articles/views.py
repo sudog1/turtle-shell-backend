@@ -1,97 +1,138 @@
-# from config.settings import (
-#     CLIENT_ID,
-#     CLIENT_SECRET,
-# )
-# import urllib.request
-import requests
 from rest_framework.response import Response
+from rest_framework.generics import get_object_or_404
 from rest_framework import status, permissions
 from rest_framework.views import APIView
-from articles.models import Product, Article
-from articles.serializers import ProductInfoSerializer
+from articles.models import Comment, Article
+from articles.serializers import (
+    CommentSerializer,
+    CommentCreateSerializer,
+    ArticleListSerializer,
+    ArticleCreateSerializer,
+    ArticleSerializer,
+)
+from accounts.models import User
 
 
-# Create your views here.
-class ArticleListView(APIView):
+class ArticleView(APIView):
+    def get(self, request, format=None):
+        articles = Article.objects.all()
+        serializer = ArticleListSerializer(articles, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def post(self, request, format=None):
-        product_id = request.data.get("product_id")
-        sim_products_endpoint = f"https://goods.musinsa.com/api/goods/v2/review/similar-list?goodsNo={product_id}"
-        stats_endpoint = (
-            f"https://www.musinsa.com/app/product/goodsview_stats/{product_id}"
-        )
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        }
-        sim_products_response = requests.get(sim_products_endpoint, headers=headers)
-        stats_response = requests.get(stats_endpoint, headers=headers)
-        if (
-            sim_products_response.status_code == 200
-            and stats_response.status_code == 200
-        ):
-            product = {"id": product_id}
-
-            products_info = sim_products_response.json()
-            for product_info in products_info["data"]:
-                if int(product_info["goodsNo"]) == product_id:
-                    product["name"] = product_info["goodsName"]
-                    product["price"] = int(product_info["price"])
-                    product["image"] = product_info["image"]
-                    product["state"] = product_info["saleStatLabel"]
-
-                    break
-            stats = stats_response.json()
-            product["quantity"] = stats["purchase"]["quantity"]
-            product_obj = Product.objects.create(**product)
-            serializer = ProductInfoSerializer(product_obj)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if not request.user.is_authenticated:
+            return Response({"message": "로그인 해주세요"}, 401)
+        serializer = ArticleCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response({"detail": "오류"})
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # brand = request.data.get("brand")
-        # SKU = request.data.get("SKU")
-        # if not (brand or SKU):
-        #     return Response(
-        #         {"detail": "브랜드와 품번을 입력해주세요"}, status=status.HTTP_400_BAD_REQUEST
-        #     )
-        # params = {
-        #     "query": f"{brand} {SKU}",
-        #     "exclude": "cbshop:used:rental",
-        #     "display": 100,
-        # }
-        # query_string = urllib.parse.urlencode(params, encoding="utf-8")
-        # print(query_string)
-        # url = f"https://openapi.naver.com/v1/search/shop.json?{query_string}"
-        # request = urllib.request.Request(url)
-        # request.add_header("X-Naver-Client-Id", CLIENT_ID)
-        # request.add_header("X-Naver-Client-Secret", CLIENT_SECRET)
-        # response = urllib.request.urlopen(request)
-        # rescode = response.getcode()
-        # if rescode == 200:
-        #     response_body = json.loads(response.read().decode("utf-8"))
-        #     return Response(response_body)
-        # else:
-        #     print("Error Code:" + rescode)
-        #     return Response()
+
+class ArticleListView(APIView):
+    def get(self, request, user_id, format=None):
+        if not user_id:
+            articles = Article.objects.all()
+            serializer = ArticleListSerializer(articles, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            user = User.objects.get(pk=user_id)
+            user_styles = user.styles.all()
+
+            articles = (
+                Article.objects.all()
+                .prefetch_related("styles")
+                .filter(styles__in=user_styles)
+            )
 
 
 class ArticleDetailView(APIView):
-    pass
+    def get(self, request, user_id, article_id, format=None):
+        article = Article.objects.get(article_id)
+        serializer = ArticleSerializer(article)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, user_id, article_id, format=None):
+        article = Article.objects.get(id=article_id)
+        if request.user != article.author:
+            return Response({"message": "권한이 없습니다"}, 401)
+        serializer = ArticleCreateSerializer(article, data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response({"message": "수정되었습니다"}, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, user_id, article_id, format=None):
+        article = Article.objects.get(id=article_id)
+        if request.user != article.author:
+            return Response({"message": "권한이 없습니다"}, 401)
+        article.delete()
+        return Response({"message": "삭제되었습니다"}, tatus=status.HTTP_200_OK)
 
 
-# class CommentView(APIView):
-#     def get(self, request, article_id):
-#         article = Article.objects.get(id=article_id)
-#         comments = article.comment_set.all()
-#         serializer =
+class CommentView(APIView):
+    def get(self, request, article_id):
+        article = Article.objects.get(id=article_id)
+        comment = article.comments.all()
+        serializer = CommentSerializer(comment, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, user_id, article_id, format=None):
+        if not request.user.is_authenticated:
+            return Response({"message": "로그인 해주세요"}, 401)
+        serializer = CommentCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(author=request.user, article_id=article_id)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CommentDetailView(APIView):
-    pass
+    def put(self, request, article_id, comment_id, format=None):
+        comment = Comment.objects.get(id=comment_id)
+        if request.user != comment.author:
+            return Response({"message": "권한이 없습니다"}, 401)
+        serializer = CommentCreateSerializer(comment, data=request.data)
+        if serializer.is_valid():
+            serializer.save(author=request.user, article_id=article_id)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, article_id, comment_id, format=None):
+        comment = Comment.objects.get(id=comment_id)
+        if request.user != comment.author:
+            return Response({"message": "권한이 없습니다"}, 401)
+        comment.delete()
+        return Response({"message": "삭제되었습니다"})
 
 
 class ArticleLikeView(APIView):
-    pass
+    def post(self, request, user_id, article_id, format=None):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"message": "로그인 해주세요"}, 401)
+        target = Article.objects.get(id=article_id)
+        if target in user.article_likes.all():
+            user.article_likes.remove(target)
+            return Response({"detail": "좋아요를 눌렀습니다"})
+        else:
+            user.article_likes.add(target)
+            return Response({"detail": "좋아요를 취소했습니다"})
 
 
 class CommentLikeView(APIView):
-    pass
+    def post(self, request, user_id, article_id, comment_id, format=None):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"message": "로그인 해주세요"}, 401)
+        target = Comment.objects.get(id=comment_id)
+        if target in user.comment_likes.all():
+            user.comment_likes.remove(target)
+            return Response({"detail": "좋아요를 눌렀습니다"})
+        else:
+            user.comment_likes.add(target)
+            return Response({"detail": "좋아요를 취소했습니다"})
