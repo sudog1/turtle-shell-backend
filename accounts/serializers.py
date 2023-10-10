@@ -26,7 +26,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         )
         extra_kwargs = {"password": {"write_only": True}}
 
-    normalized_fields = ["username", "email", "nickname"]
+    normalized_fields = ["email"]
 
     def is_valid(self, *, raise_exception=False):
         for field in self.normalized_fields:
@@ -34,22 +34,17 @@ class UserCreateSerializer(serializers.ModelSerializer):
                 self.initial_data["email"] = get_user_model().objects.normalize_email(
                     self.initial_data.get(field)
                 )
-            else:
-                self.initial_data[field] = (
-                    get_user_model()
-                    .normalize_username(self.initial_data.get(field) or "")
-                    .lower()
-                )
         return super().is_valid(raise_exception=raise_exception)
 
     def create(self, validated_data):
         return get_user_model().objects.create_user(**validated_data)
 
     def update(self, instance, validated_data):
-        password = validated_data.pop("password")
+        password = validated_data.pop("password", None)
         user = super().update(instance, validated_data)
-        user.set_password(password)
-        user.save()
+        if password:
+            user.set_password(password)
+            user.save()
         return user
 
 

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from articles.models import Article, Comment, Product
+from articles.models import Article, Comment, Style
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -24,12 +24,12 @@ class CommentCreateSerializer(serializers.ModelSerializer):
 
 
 class ArticleSerializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField()
-    comment_set = CommentSerializer(many=True)
+    author = serializers.SerializerMethodField()
+    comments = CommentSerializer(many=True)
     likes = serializers.StringRelatedField(many=True)
 
     def get_author(self, obj):
-        return obj.author.email
+        return {"id": obj.author.pk, "nickname": obj.author.nickname}
 
     class Meta:
         model = Article
@@ -37,6 +37,8 @@ class ArticleSerializer(serializers.ModelSerializer):
 
 
 class ArticleCreateSerializer(serializers.ModelSerializer):
+    styles = serializers.PrimaryKeyRelatedField(queryset=Style.objects.all(), many=True)
+
     class Meta:
         model = Article
         fields = (
@@ -60,16 +62,16 @@ class ArticleListSerializer(serializers.ModelSerializer):
         return obj.likes.count()
 
     def get_comments_count(self, obj):
-        return obj.comment_set.count()
+        return obj.comments.count()
 
     class Meta:
         model = Article
         fields = (
-            "pk",
+            "id",
             "title",
             "image",
             "updated_at",
-            "user",
+            "author",
             "likes_count",
             "comments_count",
         )

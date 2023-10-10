@@ -20,6 +20,7 @@ from config.settings import (
 
 
 class ProductView(APIView):
+    # 무신사 상품 페이지 스크래핑
     def scrape_mss(self, product_id):
         headers = {
             "User-Agent": USER_AGENT,
@@ -89,16 +90,20 @@ class ProductView(APIView):
             product = get_object_or_404(
                 Product.objects.select_related("brand"), pk=product_id
             )
+            # 상품 업데이트 시기가 되지 않음
             if datetime.now() - product.updated_at < timedelta(
                 minutes=PRODUCT_UPDATE_PERIOD
             ):
                 serializer = ProductDetailSerializer(product)
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
+            # 상품 업데이트
+            # 무신사 페이지 스크래핑
             result = self.scrape_mss(product_id)
             if result:
                 brand_data = result["brand_data"]
                 product_data = result["product_data"]
+                # 브랜드 업데이트 시기가 지났으면 업데이트
                 if datetime.now() - product.brand.updated_at >= timedelta(
                     minutes=BRAND_UPDATE_PERIOD
                 ):
@@ -124,20 +129,25 @@ class ProductView(APIView):
             serializer = ProductListSerializer(products, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
+    # 게시글 작성 시 상품 등록
     def post(self, request, format=None):
         product_id = request.data.get("product_id")
-        # 상품 등록(업데이트)
+        # 상품 등록(상품이 존재하므로 업데이트)
         if Product.objects.filter(pk=product_id).exists():
             product = Product.objects.select_related("brand").get(pk=product_id)
+            # 상품 업데이트 시기가 되지 않음
             if datetime.now() - product.updated_at < timedelta(
                 minutes=PRODUCT_UPDATE_PERIOD
             ):
                 serializer = ProductListSerializer(product)
                 return Response(serializer.data, status=status.HTTP_200_OK)
+            
+            # 상품 업데이트
             result = self.scrape_mss(product_id)
             if result:
                 brand_data = result["brand_data"]
                 product_data = result["product_data"]
+                # 브랜드 업데이트
                 if datetime.now() - product.brand.updated_at >= timedelta(
                     minutes=BRAND_UPDATE_PERIOD
                 ):
@@ -157,12 +167,12 @@ class ProductView(APIView):
                 return Response(
                     {"detail": "상품페이지 요청 실패."}, status=status.HTTP_400_BAD_REQUEST
                 )
-        # 상품 등록(생성)
+        # 상품 등록(상품이 데이터베이스에 없는 경우)
         else:
             result = self.scrape_mss(product_id)
             if result:
                 brand_data = result["brand_data"]
-                # 브랜드 업데이트
+                # 브랜드는 이미 존재할 수도 있고, 생성해야 할 수도 있습니다.
                 if Brand.objects.filter(name=brand_data["name"]).exists():
                     brand = Brand.objects.get(name=brand_data["name"])
                     if datetime.now() - brand.updated_at >= timedelta(
@@ -171,7 +181,7 @@ class ProductView(APIView):
                         brand_serializer = BrandSerializer(brand, data=brand_data)
                         if brand_serializer.is_valid():
                             brand_serializer.save()
-                # 브랜드 생성
+                # 반드시 브랜드 생성을 먼저 해야 상품을 생성할 수 있습니다.
                 else:
                     brand_serializer = BrandSerializer(data=brand_data)
                     if brand_serializer.is_valid():
@@ -191,3 +201,4 @@ class ProductView(APIView):
                 return Response(
                     {"detail": "상품페이지 요청 실패."}, status=status.HTTP_400_BAD_REQUEST
                 )
+                        

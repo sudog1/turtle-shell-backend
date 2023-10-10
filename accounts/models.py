@@ -21,7 +21,6 @@ class UserManager(BaseUserManager):
         user = self.create_user(**fields)
         user.save(using=self._db)
         return user
-    
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -38,15 +37,18 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=128,
         unique=True,
         null=True,
+        blank=True,
     )
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
     followers = models.ManyToManyField(
-        "self", symmetrical=False, related_name="followees",blank=True
+        "self", symmetrical=False, related_name="followees", blank=True
     )
-    nickname = models.CharField("nickname", max_length=32, unique=True, null=True)
+    nickname = models.CharField(
+        "nickname", max_length=32, unique=True, blank=True, null=True
+    )
     image = models.ImageField(upload_to="profile_pics", blank=True)
-    styles = models.ManyToManyField(Style, related_name="users",blank=True)
+    styles = models.ManyToManyField(Style, related_name="users", blank=True)
 
     objects = UserManager()
 
