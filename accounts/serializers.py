@@ -9,7 +9,6 @@ class UserInfoSerializer(serializers.ModelSerializer):
     styles = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
-    
 
     def get_styles(self, obj):
         queryset = obj.styles.all()
@@ -24,6 +23,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = (
+            "id",
             "email",
             "nickname",
             "image",

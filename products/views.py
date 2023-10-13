@@ -7,6 +7,7 @@ from .serializers import (
     ProductCreateSerializer,
     ProductListSerializer,
     BrandSerializer,
+    ProductReadSerializer,
 )
 import requests
 from bs4 import BeautifulSoup, SoupStrainer
@@ -94,7 +95,7 @@ class ProductView(APIView):
             if datetime.now() - product.updated_at < timedelta(
                 minutes=PRODUCT_UPDATE_PERIOD
             ):
-                serializer = ProductCreateSerializer(product)
+                serializer = ProductReadSerializer(product)
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
             # 상품 업데이트
@@ -113,7 +114,8 @@ class ProductView(APIView):
                 product_data["brand"] = product.brand.pk
                 serializer = ProductCreateSerializer(product, data=product_data)
                 if serializer.is_valid():
-                    serializer.save()
+                    product = serializer.save()
+                    serializer = ProductReadSerializer(product)
                     return Response(serializer.data, status=status.HTTP_200_OK)
                 else:
                     return Response(

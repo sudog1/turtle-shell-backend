@@ -97,7 +97,7 @@ class FollowView(APIView):
 
         if target in user.following.all():
             user.following.remove(target)
-            return Response({"detail": "팔로우가 취소되었습니다"}, status=status.HTTP_200_OK)
         else:
             user.following.add(target)
-            return Response({"detail": "팔로우하였습니다"}, status=status.HTTP_200_OK)
+        followers_count = target.followers.count()
+        return Response({"followers_count": followers_count}, status=status.HTTP_200_OK)

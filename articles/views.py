@@ -21,11 +21,17 @@ class FeedView(APIView):
     def get(self, request, format=None):
         user = request.user
         if not user.is_authenticated:
-            return Response({"detail": "로그인 해주세요"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "로그인 해주세요"}, status=status.HTTP_401_UNAUTHORIZED)
         user_styles = user.styles.all()
 
-        articles = Article.objects.select_related("styles").filter(
-            styles__in=user_styles
+        articles = (
+            Article.objects.select_related("style")
+            .filter(style__in=user_styles)
+            .annotate(
+                likes_count=Count("likes", distinct=True),
+                comments_count=Count("comments", distinct=True),
+            )
+            .order_by("-created_at")
         )
         serializer = ArticleListSerializer(articles, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -41,6 +47,7 @@ class ArticleView(APIView):
                     likes_count=Count("likes", distinct=True),
                     comments_count=Count("comments", distinct=True),
                 )
+                .order_by("-created_at")
             )
             serializer = ArticleListSerializer(articles, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -191,19 +198,26 @@ class ArticleLikeView(APIView):
 
 class CommentLikeView(APIView):
     def post(self, request, article_id, comment_id, format=None):
-        article = get_object_or_404(Article, article_id)
+        article = get_object_or_404(Article, pk=article_id)
         user = request.user
         if not user.is_authenticated:
             return Response({"detail": "로그인 해주세요"}, status=status.HTTP_401_UNAUTHORIZED)
-        target = get_object_or_404(Comment, id=comment_id)
+
+        target = get_object_or_404(Comment, pk=comment_id)
         if user == target.author:
             return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
         if target in user.comment_likes.all():
             user.comment_likes.remove(target)
-            return Response({"detail": "좋아요 취소"}, status=status.HTTP_200_OK)
+            return Response(
+                {"detail": "좋아요 취소", "likes_count": target.likes.count()},
+                status=status.HTTP_200_OK,
+            )
         else:
             user.comment_likes.add(target)
-            return Response({"detail": "좋아요"}, status=status.HTTP_200_OK)
+            return Response(
+                {"detail": "좋아요", "likes_count": target.likes.count()},
+                status=status.HTTP_200_OK,
+            )
 
 
 class StyleView(APIView):
