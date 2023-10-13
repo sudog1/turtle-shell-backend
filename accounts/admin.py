@@ -53,7 +53,19 @@ class UserAdmin(BaseUserAdmin):
     list_display = ["id", "username", "nickname", "email", "is_admin"]
     list_filter = ["is_admin"]
     fieldsets = [
-        (None, {"fields": ["username", "email", "nickname", "password", "followers",]}),
+        (
+            None,
+            {
+                "fields": [
+                    "username",
+                    "email",
+                    "nickname",
+                    "password",
+                    "following",
+                    "styles",
+                ]
+            },
+        ),
         ("Permissions", {"fields": ["is_admin"]}),
     ]
     # add_fieldsets is not a standard ModelAdmin attribute. UserAdmin
@@ -70,6 +82,7 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ["username"]
     ordering = ["username"]
     filter_horizontal = []
+
 
 admin.site.register(User, UserAdmin)
 admin.site.unregister(Group)

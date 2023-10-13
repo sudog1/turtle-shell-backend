@@ -12,18 +12,30 @@ class Style(models.Model):
 
 class Article(models.Model):
     author = models.ForeignKey(
-        AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="articles"
+        AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="articles",
+        null=True,
+    )
+    style = models.ForeignKey(
+        Style,
+        on_delete=models.SET_NULL,
+        related_name="articles",
+        null=True,
     )
     title = models.CharField(max_length=128)
     content = models.TextField()
     likes = models.ManyToManyField(
-        AUTH_USER_MODEL, related_name="article_likes", blank=True
+        AUTH_USER_MODEL,
+        related_name="article_likes",
     )
     image = models.ImageField(upload_to="article_pics", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    styles = models.ManyToManyField(Style, related_name="articles")
-    products = models.ManyToManyField(Product, related_name="articles", blank=True)
+    products = models.ManyToManyField(
+        Product,
+        related_name="articles",
+    )
 
     def __str__(self):
         return str(self.title)
@@ -35,14 +47,16 @@ class Comment(models.Model):
     )
     author = models.ForeignKey(
         AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="comments",
+        null=True,
     )
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     likes = models.ManyToManyField(
-        AUTH_USER_MODEL, related_name="comment_likes", blank=True
+        AUTH_USER_MODEL,
+        related_name="comment_likes",
     )
 
     def __str__(self):

@@ -5,16 +5,27 @@ from .models import Brand, Product
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
-        fields = "__all__"
+        fields = (
+            "name",
+            "image",
+        )
 
 
 class ProductListSerializer(serializers.ModelSerializer):
+    brand = serializers.StringRelatedField()
+
     class Meta:
         model = Product
-        fields = ("id", "name", "image")
+        fields = (
+            "id",
+            "SKU",
+            "name",
+            "image",
+            "brand",
+        )
 
 
-class ProductDetailSerializer(serializers.ModelSerializer):
+class ProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = "__all__"

@@ -4,7 +4,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.views import APIView
 from .models import Brand, Product
 from .serializers import (
-    ProductDetailSerializer,
+    ProductCreateSerializer,
     ProductListSerializer,
     BrandSerializer,
 )
@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from config.settings import (
     BRAND_UPDATE_PERIOD,
     PRODUCT_UPDATE_PERIOD,
-    API_ENDPOINT,
+    PAGE_URL,
     USER_AGENT,
 )
 
@@ -25,10 +25,10 @@ class ProductView(APIView):
         headers = {
             "User-Agent": USER_AGENT,
         }
-        response = requests.get(f"{API_ENDPOINT}{product_id}", headers=headers)
+        response = requests.get(f"{PAGE_URL}{product_id}", headers=headers)
 
         if response.status_code == 200:
-            only_product_info = SoupStrainer("div", {"id": "page_product_detail"})
+            only_product_info = SoupStrainer("div", attrs={"id": "page_product_detail"})
             soup = BeautifulSoup(
                 response.text,
                 "lxml",
@@ -94,7 +94,7 @@ class ProductView(APIView):
             if datetime.now() - product.updated_at < timedelta(
                 minutes=PRODUCT_UPDATE_PERIOD
             ):
-                serializer = ProductDetailSerializer(product)
+                serializer = ProductCreateSerializer(product)
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
             # 상품 업데이트
@@ -111,7 +111,7 @@ class ProductView(APIView):
                     if brand_serializer.is_valid():
                         brand_serializer.save()
                 product_data["brand"] = product.brand.pk
-                serializer = ProductDetailSerializer(product, data=product_data)
+                serializer = ProductCreateSerializer(product, data=product_data)
                 if serializer.is_valid():
                     serializer.save()
                     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -125,7 +125,9 @@ class ProductView(APIView):
                 )
         # 전체 상품 리스트
         else:
-            products = Product.objects.all()
+            products = Product.objects.select_related("brand").only(
+                "SKU", "name", "image", "brand__name"
+            )
             serializer = ProductListSerializer(products, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -141,7 +143,7 @@ class ProductView(APIView):
             ):
                 serializer = ProductListSerializer(product)
                 return Response(serializer.data, status=status.HTTP_200_OK)
-            
+
             # 상품 업데이트
             result = self.scrape_mss(product_id)
             if result:
@@ -151,13 +153,17 @@ class ProductView(APIView):
                 if datetime.now() - product.brand.updated_at >= timedelta(
                     minutes=BRAND_UPDATE_PERIOD
                 ):
-                    brand_serializer = BrandSerializer(product.brand, data=brand_data)
+                    brand_serializer = BrandSerializer(
+                        product.brand, data=brand_data, partial=True
+                    )
                     if brand_serializer.is_valid():
                         brand_serializer.save()
-                product_data["brand"] = product.brand.pk
-                serializer = ProductDetailSerializer(product, data=product_data)
+                serializer = ProductCreateSerializer(
+                    product, data=product_data, partial=True
+                )
                 if serializer.is_valid():
-                    serializer.save()
+                    product = serializer.save()
+                    serializer = ProductListSerializer(product)
                     return Response(serializer.data, status=status.HTTP_200_OK)
                 else:
                     return Response(
@@ -178,7 +184,9 @@ class ProductView(APIView):
                     if datetime.now() - brand.updated_at >= timedelta(
                         minutes=BRAND_UPDATE_PERIOD
                     ):
-                        brand_serializer = BrandSerializer(brand, data=brand_data)
+                        brand_serializer = BrandSerializer(
+                            brand, data=brand_data, partial=True
+                        )
                         if brand_serializer.is_valid():
                             brand_serializer.save()
                 # 반드시 브랜드 생성을 먼저 해야 상품을 생성할 수 있습니다.
@@ -189,9 +197,10 @@ class ProductView(APIView):
 
                 product_data = result["product_data"]
                 product_data["brand"] = brand.pk
-                serializer = ProductDetailSerializer(data=product_data)
+                serializer = ProductCreateSerializer(data=product_data)
                 if serializer.is_valid():
-                    serializer.save()
+                    product = serializer.save()
+                    serializer = ProductListSerializer(product)
                     return Response(serializer.data, status=status.HTTP_200_OK)
                 else:
                     return Response(
@@ -201,4 +210,3 @@ class ProductView(APIView):
                 return Response(
                     {"detail": "상품페이지 요청 실패."}, status=status.HTTP_400_BAD_REQUEST
                 )
-                        

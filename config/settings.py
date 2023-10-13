@@ -145,7 +145,7 @@ MEDIA_URL = "/media/"
 # 무신사 API 세팅
 BRAND_UPDATE_PERIOD = 1
 PRODUCT_UPDATE_PERIOD = 1
-API_ENDPOINT = "https://www.musinsa.com/app/goods/"
+PAGE_URL = "https://www.musinsa.com/app/goods/"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
 # JWT 토큰 세팅

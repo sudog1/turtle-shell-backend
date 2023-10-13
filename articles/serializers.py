@@ -1,20 +1,50 @@
 from rest_framework import serializers
 from articles.models import Article, Comment, Style
+from products.models import Product
+from products.serializers import ProductListSerializer
 
 
-class CommentSerializer(serializers.ModelSerializer):
+class StyleListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Style
+        fields = "__all__"
+
+
+class CommentListSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
-    article = serializers.SerializerMethodField()
+    likes_count = serializers.IntegerField()
 
     def get_author(self, obj):
-        return obj.author.nickname
-
-    def get_article(self, obj):
-        return obj.article.title
+        return {"id": obj.author.pk, "nickname": obj.author.nickname}
 
     class Meta:
         model = Comment
-        fields = ("article", "author", "content", "created_at", "updated_at", "likes")
+        fields = (
+            "author",
+            "content",
+            "updated_at",
+            "likes_count",
+        )
+
+
+class CommentReadSerializer(serializers.ModelSerializer):
+    author = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
+
+    def get_author(self, obj):
+        return {"id": obj.author.pk, "nickname": obj.author.nickname}
+
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+    class Meta:
+        model = Comment
+        fields = (
+            "author",
+            "content",
+            "updated_at",
+            "likes_count",
+        )
 
 
 class CommentCreateSerializer(serializers.ModelSerializer):
@@ -25,23 +55,32 @@ class CommentCreateSerializer(serializers.ModelSerializer):
 
 class ArticleSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
-    comments = CommentSerializer(many=True)
-    # likes = serializers.StringRelatedField(many=True)
-    likes = serializers.SerializerMethodField()
+    products = ProductListSerializer(many=True)
+    likes_count = serializers.IntegerField()
+    comments_count = serializers.IntegerField()
 
     def get_author(self, obj):
         return {"id": obj.author.pk, "nickname": obj.author.nickname}
 
-    def get_likes(self, obj):
-        return obj.likes.count()
-
     class Meta:
         model = Article
-        fields = "__all__"
+        fields = (
+            "author",
+            "title",
+            "content",
+            "created_at",
+            "image",
+            "style",
+            "likes_count",
+            "comments_count",
+            "products",
+        )
 
 
 class ArticleCreateSerializer(serializers.ModelSerializer):
-    styles = serializers.PrimaryKeyRelatedField(queryset=Style.objects.all(), many=True)
+    products = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), many=True, write_only=True
+    )
 
     class Meta:
         model = Article
@@ -49,24 +88,21 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
             "title",
             "image",
             "content",
-            "styles",
+            "style",
             "products",
         )
 
 
 class ArticleListSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
-    likes_count = serializers.SerializerMethodField()
-    comments_count = serializers.SerializerMethodField()
+    likes_count = serializers.IntegerField()
+    comments_count = serializers.IntegerField()
 
     def get_author(self, obj):
-        return obj.author.nickname
-
-    def get_likes_count(self, obj):
-        return obj.likes.count()
-
-    def get_comments_count(self, obj):
-        return obj.comments.count()
+        return {
+            "id": obj.author.pk,
+            "nickname": obj.author.nickname,
+        }
 
     class Meta:
         model = Article
@@ -74,9 +110,9 @@ class ArticleListSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "image",
-            "updated_at",
+            "created_at",
             "author",
             "likes_count",
             "comments_count",
-            "styles",
+            "style",
         )

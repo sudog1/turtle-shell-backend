@@ -6,17 +6,39 @@ from articles.models import Style
 
 
 class UserInfoSerializer(serializers.ModelSerializer):
+    styles = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    
+
     def get_styles(self, obj):
         queryset = obj.styles.all()
         return [{"id": style.id, "name": style.name} for style in queryset]
 
+    def get_following_count(self, obj):
+        return obj.following.count()
+
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
     class Meta:
         model = get_user_model()
-        fields = ("email", "nickname", "image", "styles")
+        fields = (
+            "email",
+            "nickname",
+            "image",
+            "styles",
+            "following_count",
+            "followers_count",
+        )
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    styles = serializers.PrimaryKeyRelatedField(queryset=Style.objects.all(), many=True)
+    styles = serializers.PrimaryKeyRelatedField(
+        queryset=Style.objects.all(),
+        many=True,
+        required=False,
+    )
 
     class Meta:
         model = get_user_model()
@@ -29,19 +51,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
         )
         extra_kwargs = {"password": {"write_only": True}}
 
-    normalized_fields = ["email"]
-
     def is_valid(self, *, raise_exception=False):
-        for field in self.normalized_fields:
-            if field == "email":
-                self.initial_data["email"] = get_user_model().objects.normalize_email(
-                    self.initial_data.get(field)
-                )
+        self.initial_data["email"] = get_user_model().objects.normalize_email(
+            self.initial_data.get("email")
+        )
+        self.initial_data["username"] = self.initial_data["username"].lower()
         return super().is_valid(raise_exception=raise_exception)
 
     def create(self, validated_data):
+        password = validated_data.pop("password")
         user = super().create(validated_data)
-        password = user.password
         user.set_password(password)
         user.save()
         return user
