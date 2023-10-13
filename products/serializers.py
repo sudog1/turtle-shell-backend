@@ -29,3 +29,11 @@ class ProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = "__all__"
+
+
+class ProductReadSerializer(serializers.ModelSerializer):
+    brand = BrandSerializer()
+    
+    class Meta:
+        model = Product
+        fields = "__all__"
