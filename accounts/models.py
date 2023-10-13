@@ -7,6 +7,7 @@ from django.contrib.auth.models import (
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from articles.models import Style
 
+
 class UserManager(BaseUserManager):
     def create_user(self, password, **fields):
         user = self.model(**fields)
@@ -24,30 +25,46 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     username_validator = UnicodeUsernameValidator()
-    
-    username = models.CharField("username", max_length=64, unique=True, validators=[username_validator],)
+
+    username = models.CharField(
+        "username",
+        max_length=64,
+        unique=True,
+        validators=[username_validator],
+    )
     email = models.EmailField(
         "email",
         max_length=128,
         unique=True,
-        null=True,
     )
+    nickname = models.CharField(
+        "nickname",
+        max_length=32,
+        unique=True,
+    )
+    image = models.ImageField(upload_to="profile_pics", null=True, blank=True)
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
-    followers = models.ManyToManyField('self', symmetrical=False, related_name="followees")
-    nickname = models.CharField("nickname", max_length=32, unique=True, null=True)
-    image = models.ImageField(upload_to='profile_pics',blank=True)
-    style = models.ManyToManyField(Style, related_name="style_users")
+    following = models.ManyToManyField(
+        "self",
+        symmetrical=False,
+        related_name="followers",
+    )
+
+    styles = models.ManyToManyField(
+        Style,
+        related_name="users",
+    )
 
     objects = UserManager()
 
     EMAIL_FIELD = "email"
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = []
+    USERNAME_FIELD = "username"
+    REQUIRED_FIELDS = ["email", "nickname"]
 
-    # def __str__(self):
-    #     return self.nickname
-    
+    def __str__(self):
+        return self.nickname
+
     @property
     def is_staff(self):
         return self.is_admin
